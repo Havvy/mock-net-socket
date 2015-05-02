@@ -1,0 +1,22 @@
+{
+  "name": "@havvy/mock-net-socket",
+  "version": "1.0.0",
+  "description": "Mock NetSocket for testing purposes.",
+  "main": "socket.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Havvy/mock-net-socket"
+  },
+  "author": "Ryan Scheel (Havvy)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Havvy/mock-net-socket/issues"
+  },
+  "homepage": "https://github.com/Havvy/mock-net-socket",
+  "dependencies": {
+    "sinon": "^1.14.1"
+  }
+}
