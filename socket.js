@@ -41,6 +41,39 @@ var MockSocket = module.exports = function MockSocket (baselogfn) {
             }
         }),
 
+        write: function () {
+            // Note: Most code here is workaround for there being no `spy.getCallAsync(n)`.
+            var spy = sinon.spy(function (out) {
+                out = out.replace(/\r/g, "\\r").replace(/\n/g, "\\n");
+                logfn(format("[WRITE]           '%s'", out));
+
+                if (ended) {
+                    throw new Error("Write After End");
+                }
+                
+                spy.emit();
+            });
+
+            var calls = {};
+            var call = 0;
+
+            spy.on = function (n, fn) {
+                calls[n] = fn;
+            };
+
+            spy.emit = function () {
+                setImmediate(function () {
+                    if (calls[call]) {
+                        calls[call](spy.getCall(call));
+                    }
+
+                    call += 1;
+                });
+            };
+
+            return spy;
+        }(),
+
         end:  function () { 
             this.emit("close");
             ended = true;
