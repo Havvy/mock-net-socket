@@ -1,4 +1,5 @@
 var EEProto = require("events").EventEmitter.prototype;
+var sinon = require("sinon");
 var inspect = require("util").inspect;
 var format = require("util").format;
 var assert = require("assert");
@@ -16,99 +17,98 @@ var pad = function (str) {
     return ("      " + str).slice(-9);
 };
 
-module.exports = function (sinon) {
-    return function MockSocket (baselogfn) {
-        var logfn = function () {
-            var args = Array.prototype.slice.call(arguments);
-            args.unshift("MockSocket");
-            baselogfn.apply(null, args);
-        };
+var MockSocket = module.exports = function MockSocket (baselogfn) {
+    var logfn = function () {
+        var args = Array.prototype.slice.call(arguments);
+        args.unshift("MockSocket");
+        baselogfn.apply(null, args);
+    };
 
-        var connecting = false;
-        var ended = false;
+    var connecting = false;
+    var ended = false;
 
-        return Object.create(EEProto, intoPropertyDescriptors({
-            connect : sinon.spy(function () {
-                connecting = true;
-            }),
+    return Object.create(EEProto, intoPropertyDescriptors({
+        connect : sinon.spy(function () {
+            connecting = true;
+            return this;
+        }),
 
-            write: sinon.spy(function (out) {
+        write: sinon.spy(function (out) {
+            out = out.replace(/\r/g, "\\r").replace(/\n/g, "\\n");
+            logfn(format("[WRITE]           '%s'", out));
+
+            if (ended) {
+                throw new Error("Write After End");
+            }
+        }),
+
+        write: function () {
+            // Note: Most code here is workaround for there being no `spy.getCallAsync(n)`.
+            var spy = sinon.spy(function (out) {
                 out = out.replace(/\r/g, "\\r").replace(/\n/g, "\\n");
                 logfn(format("[WRITE]           '%s'", out));
 
                 if (ended) {
                     throw new Error("Write After End");
                 }
-            }),
 
-            write: function () {
-                // Note: Most code here is workaround for there being no `spy.getCallAsync(n)`.
-                var spy = sinon.spy(function (out) {
-                    out = out.replace(/\r/g, "\\r").replace(/\n/g, "\\n");
-                    logfn(format("[WRITE]           '%s'", out));
+                spy.emit();
+            });
 
-                    if (ended) {
-                        throw new Error("Write After End");
+            var calls = {};
+            var call = 0;
+
+            spy.on = function (n, fn) {
+                calls[n] = fn;
+            };
+
+            spy.emit = function () {
+                setImmediate(function () {
+                    if (calls[call]) {
+                        calls[call](spy.getCall(call));
                     }
-                    
-                    spy.emit();
+
+                    call += 1;
                 });
+            };
 
-                var calls = {};
-                var call = 0;
+            return spy;
+        }(),
 
-                spy.on = function (n, fn) {
-                    calls[n] = fn;
-                };
+        end:  function () {
+            this.emit("close");
+            ended = true;
+        },
 
-                spy.emit = function () {
-                    setImmediate(function () {
-                        if (calls[call]) {
-                            calls[call](spy.getCall(call));
-                        }
+        setNoDelay: sinon.spy(),
+        setEncoding: sinon.spy(),
 
-                        call += 1;
-                    });
-                };
+        // Spying on Event Emitter methods.
+        emit: function (message, data) {
+            var datastr = data === undefined ? "no-data" : inspect(data);
+            logfn(format(" [EMIT] %s %s", pad(message), datastr));
+            EEProto.emit.apply(this, arguments);
+        },
 
-                return spy;
-            }(),
+        on: function (message, fn) {
+            logfn(format("   [ON] %s %s", pad(message), fn.name));
+            EEProto.on.apply(this, arguments);
+        },
 
-            end:  function () { 
-                this.emit("close");
-                ended = true;
-            },
+        removeListener: function (message, fn) {
+            logfn(format("  [OFF] %s %s", pad(message), fn.name));
+            EEProto.removeListener.apply(this, arguments);
+        },
 
-            setNoDelay: sinon.spy(),
-            setEncoding: sinon.spy(),
+        // Only to be called by test code.
+        acceptConnect: function () {
+            assert(connecting === true);
+            connecting = false;
+            this.emit("connect");
+        },
 
-            // Spying on Event Emitter methods.
-            emit: function (message, data) {
-                var datastr = data === undefined ? "no-data" : inspect(data);
-                logfn(format(" [EMIT] %s %s", pad(message), datastr));
-                EEProto.emit.apply(this, arguments);
-            },
-
-            on: function (message, fn) {
-                logfn(format("   [ON] %s %s", pad(message), fn.name));
-                EEProto.on.apply(this, arguments);
-            },
-
-            removeListener: function (message, fn) {
-                logfn(format("  [OFF] %s %s", pad(message), fn.name));
-                EEProto.removeListener.apply(this, arguments);
-            },
-
-            // Only to be called by test code.
-            acceptConnect: function () {
-                assert(connecting === true);
-                connecting = false;
-                this.emit("connect");
-            },
-
-            acceptData: function (data) {
-                this.emit("data", data);
-            }
-        }));
-    };
+        acceptData: function (data) {
+            this.emit("data", data);
+        }
+    }));
 };
