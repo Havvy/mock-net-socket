@@ -1,20 +1,23 @@
 {
-  "name": "@havvy/mock-net-socket",
+  "name": "@silverbucket/mock-net-socket",
   "version": "2.0.0",
-  "description": "Mock NetSocket for testing purposes.",
+  "description": "Mock NetSocket for testing purposes. Forked from Havvy.",
   "main": "socket.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/Havvy/mock-net-socket"
+    "url": "git://github.com/silverbucket/mock-net-socket"
   },
   "author": "Ryan Scheel (Havvy)",
+  "contributors": [
+    "Nick Jennings <nick@silverbucket.net> (https://silverbucket.net)"
+  ],
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Havvy/mock-net-socket/issues"
+    "url": "https://github.com/silverbucket/mock-net-socket/issues"
   },
-  "homepage": "https://github.com/Havvy/mock-net-socket",
+  "homepage": "https://github.com/silverbucket/mock-net-socket",
   "dependencies": {}
 }
